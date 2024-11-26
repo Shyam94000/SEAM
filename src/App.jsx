@@ -44,7 +44,11 @@ function App() {
       if (modelsLoaded) {
         try {
           const response = await fetch("/dataset/names.json");
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
           const data = await response.json();
+          console.log('Raw dataset:', data);  // Log raw response
           const faceDescriptors = [];
 
           for (let item of data) {
