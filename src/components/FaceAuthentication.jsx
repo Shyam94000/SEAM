@@ -7,7 +7,6 @@ import RemoveRedEyeIcon from "@mui/icons-material/RemoveRedEye";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import WarningIcon from "@mui/icons-material/Warning";
 import ReactWebcam from "react-webcam";
-import { CircularProgress } from "@mui/material";
 import AuthenticatedProfile from "./AuthenticatedProfile";
 
 const FaceAuthentication = ({ registeredFaces, onAuthenticated }) => {
@@ -65,7 +64,9 @@ const FaceAuthentication = ({ registeredFaces, onAuthenticated }) => {
 
     try {
       const img = new Image();
-      img.src = imageSrc;
+      img.src = process.env.NODE_ENV === "production"
+        ? `/SEAM${imageSrc}`
+        : imageSrc;
 
       img.onload = async () => {
         const detections = await faceapi
@@ -89,9 +90,9 @@ const FaceAuthentication = ({ registeredFaces, onAuthenticated }) => {
             if (matchedFace) {
               setMatch({
                 name: bestMatch.label,
-                image: process.env.NODE_ENV === 'production' 
-                  ? `/SEAM${matchedFace.image}` 
-                  : matchedFace.image
+                image: process.env.NODE_ENV === "production"
+                  ? `/SEAM${matchedFace.image}`
+                  : matchedFace.image,
               });
               onAuthenticated(bestMatch.label); // Return the match to the parent
             } else {
@@ -117,11 +118,11 @@ const FaceAuthentication = ({ registeredFaces, onAuthenticated }) => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        minHeight: "100vh", // Ensure the content fits within the viewport
-        backgroundColor: "#ffffff", // Set background color to white
+        minHeight: "100vh",
+        backgroundColor: "#ffffff",
         flexDirection: "column",
-        gap: 1, // Adjusted gap for better spacing
-        padding: "10px", // Add padding to make sure content is spaced well
+        gap: 1,
+        padding: "10px",
       }}
     >
       <Box
@@ -133,11 +134,11 @@ const FaceAuthentication = ({ registeredFaces, onAuthenticated }) => {
           borderRadius: "25px",
           backgroundColor: "#FAFAF5",
           boxShadow: 6,
-          border: "2px solid lightgrey", // Thicker grey border
+          border: "2px solid lightgrey",
           width: "100%",
-          maxWidth: "420px", // Makes the box more centered and responsive
-          flex: 1, // Allow the content to fill the available space
-          overflow: "hidden", // Prevent scrolling
+          maxWidth: "420px",
+          flex: 1,
+          overflow: "hidden",
         }}
       >
         {cameraError && (
@@ -155,18 +156,17 @@ const FaceAuthentication = ({ registeredFaces, onAuthenticated }) => {
           </Box>
         )}
 
-        {/* Only show webcam box if camera is accessible */}
         {!cameraError && (
           <Box
             sx={{
               position: "relative",
               width: "100%",
-              height: "300px", // Set a fixed height for the webcam preview
+              height: "300px",
               backgroundColor: "white",
               borderRadius: "18px",
               overflow: "hidden",
               boxShadow: 3,
-              mb: 3, // Adjusted margin for spacing
+              mb: 3,
             }}
           >
             <ReactWebcam
@@ -179,11 +179,9 @@ const FaceAuthentication = ({ registeredFaces, onAuthenticated }) => {
               style={{
                 width: "100%",
                 height: "100%",
-                objectFit: "cover", // Ensures webcam fills the container
+                objectFit: "cover",
               }}
             />
-
-            {/* Visual Border for Alignment */}
             <Box
               sx={{
                 position: "absolute",
@@ -191,19 +189,18 @@ const FaceAuthentication = ({ registeredFaces, onAuthenticated }) => {
                 left: "20%",
                 right: "20%",
                 bottom: "25%",
-                border: "2px dashed #00C853", // Dashed border for alignment
+                border: "2px dashed #00C853",
                 borderRadius: "12px",
                 boxSizing: "border-box",
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
-                pointerEvents: "none", // Prevent interaction with the border
+                pointerEvents: "none",
               }}
             ></Box>
           </Box>
         )}
 
-        {/* Authentication Button */}
         <Button
           variant="contained"
           color="success"
@@ -214,16 +211,15 @@ const FaceAuthentication = ({ registeredFaces, onAuthenticated }) => {
           startIcon={<CameraAltIcon />}
           sx={{
             borderRadius: "12px",
-            width: "100%", // Takes up full width of the container
-            maxWidth: "420px", // Limits the maximum width
+            width: "100%",
+            maxWidth: "420px",
             textTransform: "none",
-            fontSize: "16px", // More readable font size
+            fontSize: "16px",
           }}
         >
           {isAuthenticating ? "Authenticating..." : "Authenticate"}
         </Button>
 
-        {/* Faces Detection Status */}
         <Box sx={{ mt: 2, display: "flex", alignItems: "center", gap: 1 }}>
           {facesStatus === "no-face" && (
             <Box sx={{ color: "red", display: "flex", alignItems: "center" }}>
@@ -232,9 +228,7 @@ const FaceAuthentication = ({ registeredFaces, onAuthenticated }) => {
             </Box>
           )}
           {facesStatus === "multiple-faces" && (
-            <Box
-              sx={{ color: "orange", display: "flex", alignItems: "center" }}
-            >
+            <Box sx={{ color: "orange", display: "flex", alignItems: "center" }}>
               <WarningIcon sx={{ mr: 1 }} />
               <Typography variant="body2">Multiple faces detected</Typography>
             </Box>
@@ -245,73 +239,6 @@ const FaceAuthentication = ({ registeredFaces, onAuthenticated }) => {
               <Typography variant="body2">Ready to Authenticate</Typography>
             </Box>
           )}
-        </Box>
-
-        {/* Instructional Section */}
-        <Box sx={{ mt: 4, width: "100%" }}>
-          <Typography variant="h6" sx={{ mb: 2, textAlign: "start" }}>
-            Follow these instructions:
-          </Typography>
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column", // Stack icons and texts vertically
-              alignItems: "flex-start", // Align items to the start (left)
-              gap: 1, // Reduced gap to make instructions closer together
-            }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "row", // Align icon and text horizontally
-                alignItems: "center", // Align icon and text vertically centered
-                color: instructions.camera ? "green" : "green",
-                mb: 1, // Reduced margin at the bottom to make it closer
-              }}
-            >
-              <RemoveRedEyeIcon
-                sx={{ color: instructions.camera ? "green" : "green" }}
-              />
-              <Typography variant="body5" sx={{ ml: 2 }}>
-                Look directly at your camera and stay still
-              </Typography>
-            </Box>
-
-            {/* New instruction for alignment */}
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "row", // Align icon and text horizontally
-                alignItems: "center", // Align icon and text vertically centered
-                color: instructions.camera ? "green" : "green",
-                mb: 1, // Reduced margin
-              }}
-            >
-              <CheckCircleIcon
-                sx={{ color: instructions.camera ? "green" : "green" }}
-              />
-              <Typography variant="body5" sx={{ ml: 2 }}>
-                Position your face within the green frame
-              </Typography>
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "row", // Align icon and text horizontally
-                alignItems: "center", // Align icon and text vertically centered
-                color: instructions.lighting ? "green" : "green",
-                mb: 1, // Reduced margin
-              }}
-            >
-              <LightModeIcon
-                sx={{ color: instructions.lighting ? "green" : "green" }}
-              />
-              <Typography variant="body5" sx={{ ml: 2 }}>
-                Ensure good lighting on your face
-              </Typography>
-            </Box>
-          </Box>
         </Box>
       </Box>
 
