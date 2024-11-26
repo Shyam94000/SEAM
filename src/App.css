@@ -1,0 +1,97 @@
+/* Root container - Center and expand to full screen */
+#root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* Center the content */
+  min-height: 100vh; /* Full screen height */
+  min-width: 100vw; /* Full screen width */
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  background-color: #f5f5f5; /* Light grey background */
+}
+
+/* Header section for logos and title */
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%; /* Full width */
+  padding: 1rem;
+  background-color: #ffffff; /* White background for contrast */
+  border-bottom: 1px solid lightgrey;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+}
+
+/* Logo container */
+.logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap; /* Allow logos to wrap on smaller screens */
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.logo {
+  height: 5em;
+  padding: 1rem;
+  will-change: filter;
+  transition: filter 300ms;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+
+/* Content section */
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-grow: 1; /* Push content to fill available space */
+  min-width: 100vw;
+  padding: 2rem;
+  gap: 2rem; /* Add spacing between elements */
+}
+
+/* Webcam and button container */
+.webcam-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 100vw;
+
+  aspect-ratio: 6 / 5;
+  background-color: #ffffff;
+  border: 2px solid lightgrey;
+  border-radius: 16px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+/* Webcam */
+.webcam {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Fill the box */
+}
+
+/* Button */
+button {
+  border-radius: 16px;
+  width: 100%;
+  max-width: 320px;
+}
+
+/* Footer section (optional) */
+.footer {
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.9rem;
+  color: #666;
+}
