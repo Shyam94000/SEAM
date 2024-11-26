@@ -89,7 +89,9 @@ const FaceAuthentication = ({ registeredFaces, onAuthenticated }) => {
             if (matchedFace) {
               setMatch({
                 name: bestMatch.label,
-                image: matchedFace.image, // Only set image if matchedFace is found
+                image: process.env.NODE_ENV === 'production' 
+                  ? `/SEAM${matchedFace.image}` 
+                  : matchedFace.image
               });
               onAuthenticated(bestMatch.label); // Return the match to the parent
             } else {
@@ -170,7 +172,7 @@ const FaceAuthentication = ({ registeredFaces, onAuthenticated }) => {
             <ReactWebcam
               ref={webcamRef}
               audio={false}
-              screenshotFormat="/SEAM/image/jpeg"
+              screenshotFormat="/image/jpeg"
               videoConstraints={{
                 facingMode: "user",
               }}
