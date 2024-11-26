@@ -16,17 +16,17 @@ const Header = () => {
         }}
       >
         <img
-          src="/src/assets/logos/logo1.png"
+          src="/logos/logo1.png"
           alt="Logo 1"
           style={{ height: "80px", maxWidth: "90%" }}
         />
         <img
-          src="/src/assets/logos/logo2.png"
+          src="/logos/logo2.png"
           alt="Logo 2"
           style={{ height: "80px", maxWidth: "90%" }}
         />
         <img
-          src="/src/assets/logos/logo3.png"
+          src="/logos/logo3.png"
           alt="Logo 3"
           style={{ height: "80px", maxWidth: "90%" }}
         />
