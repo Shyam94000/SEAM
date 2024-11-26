@@ -24,7 +24,7 @@ const AuthenticatedProfile = ({ name, image }) => {
       {/* Top Left Logo */}
       <Box
         component="img"
-        src="/src/assets/logo-left.png"
+        src="/SEAM/src/assets/logo-left.png"
         alt="Left Logo"
         sx={{
           position: "absolute",
@@ -38,7 +38,7 @@ const AuthenticatedProfile = ({ name, image }) => {
       {/* Top Right Logo */}
       <Box
         component="img"
-        src="/src/assets/logo-right.png"
+        src="/SEAM/src/assets/logo-right.png"
         alt="Right Logo"
         sx={{
           position: "absolute",
