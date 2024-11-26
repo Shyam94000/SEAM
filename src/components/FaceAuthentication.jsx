@@ -170,7 +170,7 @@ const FaceAuthentication = ({ registeredFaces, onAuthenticated }) => {
             <ReactWebcam
               ref={webcamRef}
               audio={false}
-              screenshotFormat="image/jpeg"
+              screenshotFormat="/SEAM/image/jpeg"
               videoConstraints={{
                 facingMode: "user",
               }}
