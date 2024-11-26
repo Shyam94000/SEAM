@@ -43,7 +43,7 @@ function App() {
     const loadDataset = async () => {
       if (modelsLoaded) {
         try {
-          const response = await fetch("/dataset/names.json");
+          const response = await fetch("/SEAM/dataset/names.json");
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
