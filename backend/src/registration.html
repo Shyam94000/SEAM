@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Registration</title>
+    <script>
+        async function submitForm(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const formData = new FormData(form);
+
+            try {
+                // IMPORTANT: Change this to your actual backend server URL
+                const response = await fetch('http://localhost:3000/api/user/register', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                // Add error handling for non-JSON responses
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    throw new Error(`Unexpected response: ${text}`);
+                }
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert('Registration Successful: ' + result.message);
+                    form.reset(); // Clear the form
+                } else {
+                    alert('Registration Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred during registration: ' + error.message);
+            }
+        }
+    </script>
+</head>
+<body>
+    <h2>User Registration</h2>
+    <form onsubmit="submitForm(event)" enctype="multipart/form-data">
+        <div>
+            <label for="name">Full Name:</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        <div>
+            <label for="aadharNumber">Aadhar Number:</label>
+            <input type="text" id="aadharNumber" name="aadharNumber" required>
+        </div>
+        <div>
+            <label for="image">Face Image:</label>
+            <input type="file" id="image" name="image" accept="image/*" required>
+        </div>
+        <button type="submit">Register</button>
+    </form>
+</body>
+</html>
