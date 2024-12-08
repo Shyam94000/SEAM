@@ -26,43 +26,26 @@ function App() {
 
   // Function to load models from the server
   const loadModels = async () => {
-    const MODEL_URL = "https://sihseam2024mainbackend.azurewebsites.net/models";
-    const MAX_RETRIES = 3;
-    let currentAttempt = 0;
-  
-    const attemptLoadModels = async () => {
-      try {
-        await Promise.all([
-          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-        ]);
-  
-        // Add a slight delay to ensure models are fully processed
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        setModelsLoaded(true);
-        return true;
-      } catch (error) {
-        console.error(`Model loading attempt ${currentAttempt + 1} failed:`, error);
-        
-        if (currentAttempt < MAX_RETRIES) {
-          currentAttempt++;
-          console.log(`Retrying model load (Attempt ${currentAttempt})...`);
-          
-          // Exponential backoff
-          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, currentAttempt)));
-          
-          return attemptLoadModels();
-        } else {
-          console.error("Failed to load models after maximum retries");
-          setModelsLoaded(false);
-          return false;
-        }
-      }
-    };
-  
-    return attemptLoadModels();
+    try {
+      const MODEL_URL = "https://sihseam2024mainbackend.azurewebsites.net/models";
+      await Promise.all([
+        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+      ]);
+ 
+      setModelsLoaded(true);
+      
+    } catch (error) {
+      console.error("Error loading models:", error);
+    }
+  };
+  const handleAuthenticated = (user, result) => {
+    if (user) {
+      setAuthenticatedUser(user);
+      setAuthenticationResult(result);
+      navigate("/profile");
+    }
   };
 
   useEffect(() => {

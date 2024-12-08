@@ -1,5 +1,3 @@
-// src/modelHashUtils.js
-
 import axios from "axios";
 
 // Function to calculate the hash of model weights
@@ -22,19 +20,15 @@ export const verifyModelHashes = async (faceapi, setHashVerificationError) => {
     const response = await axios.get("https://sihseam2024mainbackend.azurewebsites.net/model-hash");
     const serverHashes = response.data;
 
+    // Define the models with only the .json files (manifest files)
     const loadedModels = {
       ssdMobilenetv1: [
-        'ssd_mobilenetv1_model-shard1',
-        'ssd_mobilenetv1_model-shard2',
         'ssd_mobilenetv1_model-weights_manifest.json'
       ],
       faceLandmark68Net: [
-        'face_landmark_68_model-shard1',
         'face_landmark_68_model-weights_manifest.json'
       ],
       faceRecognitionNet: [
-        'face_recognition_model-shard1',
-        'face_recognition_model-shard2',
         'face_recognition_model-weights_manifest.json'
       ]
     };
@@ -47,7 +41,7 @@ export const verifyModelHashes = async (faceapi, setHashVerificationError) => {
         throw new Error(`Model ${modelName} is not loaded`);
       }
 
-      // Iterate over the model files and compare their hashes
+      // Iterate over the .json files (manifest files) and compare their hashes
       for (const fileName of modelFiles) {
         const modelUrl = `https://sihseam2024mainbackend.azurewebsites.net/models/${fileName}`;
 
@@ -64,7 +58,7 @@ export const verifyModelHashes = async (faceapi, setHashVerificationError) => {
       }
     }
 
-    console.log("All loaded models match server hashes!");
+    console.log("All manifest files match server hashes!");
     return true;
   } catch (error) {
     console.error("Hash verification failed:", error);
