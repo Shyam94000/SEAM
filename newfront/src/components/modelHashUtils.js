@@ -19,7 +19,7 @@ export const calculateHash = async (url) => {
 export const verifyModelHashes = async (faceapi, setHashVerificationError) => {
   try {
     // Fetch server-side hashes
-    const response = await axios.get("http://localhost:3000/model-hash");
+    const response = await axios.get("https://sihseam2024mainbackend.azurewebsites.net/model-hash");
     const serverHashes = response.data;
 
     const loadedModels = {
@@ -49,7 +49,7 @@ export const verifyModelHashes = async (faceapi, setHashVerificationError) => {
 
       // Iterate over the model files and compare their hashes
       for (const fileName of modelFiles) {
-        const modelUrl = `http://localhost:3000/models/${fileName}`;
+        const modelUrl = `https://sihseam2024mainbackend.azurewebsites.net/models/${fileName}`;
 
         // Calculate the hash of the local model file
         const localHash = await calculateHash(modelUrl);

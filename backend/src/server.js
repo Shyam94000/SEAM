@@ -201,43 +201,62 @@ class SecureModelServer {
 
     this.app.get('/models/:modelName', async (req, res) => {
       try {
-        console.log("Sent models")
-
         const modelName = req.params.modelName;
         const modelPath = path.join(__dirname, 'models', modelName);
-
-        // Try to get from in-memory cache first
-        if (this.modelCache.has(modelName)) {
-          const cachedModel = this.modelCache.get(modelName);
-          res.setHeader('Content-Type', modelName.endsWith('.json') ? 'application/json' : 'application/octet-stream');
-          res.setHeader('Content-Disposition', `attachment; filename="${modelName}"`);
-          res.setHeader('Cache-Control', 'public, max-age=3600'); // 1-hour cache
-          return res.send(cachedModel);
-        }
-
+    
         // Check if file exists
         await fsPromises.access(modelPath);
-
+    
+        // Get file stats to log size
+        const stats = await fsPromises.stat(modelPath);
+        console.log(`Serving model: ${modelName}, Size: ${stats.size} bytes`);
+    
         // Stream the file
         const fileStream = fs.createReadStream(modelPath);
         
         // Set headers
         res.setHeader('Content-Type', modelName.endsWith('.json') ? 'application/json' : 'application/octet-stream');
         res.setHeader('Content-Disposition', `attachment; filename="${modelName}"`);
-        res.setHeader('Cache-Control', 'public, max-age=3600'); // 1-hour cache
-        // Pipe file stream and cache in memory for future requests
-        fileStream.on('data', (chunk) => {
-          if (!this.modelCache.has(modelName)) {
-            this.modelCache.set(modelName, chunk);
+        
+        // Pipe file stream directly
+        fileStream.pipe(res);
+    
+        // Error handling for file stream
+        fileStream.on('error', (streamError) => {
+          this.logger.error('Model file stream error', { 
+            modelName, 
+            message: streamError.message, 
+            stack: streamError.stack 
+          });
+          if (!res.headersSent) {
+            res.status(500).json({ 
+              error: 'Error serving model file', 
+              details: streamError.message 
+            });
           }
         });
-        
-        fileStream.pipe(res);
+    
       } catch (error) {
-        this.logger.error('Model serve error', { message: error.message, stack: error.stack });
-        res.status(404).json({ error: 'Model not found', details: error.message });
+        this.logger.error('Model serve error', { 
+          modelName,
+          message: error.message, 
+          stack: error.stack 
+        });
+        
+        if (error.code === 'ENOENT') {
+          res.status(404).json({ 
+            error: 'Model file not found', 
+            details: `No model found with name: ${modelName}` 
+          });
+        } else {
+          res.status(500).json({ 
+            error: 'Internal server error', 
+            details: error.message 
+          });
+        }
       }
     });
+    
     // Cached model hash route
     this.app.get('/model-hash', async (req, res) => {
       try {

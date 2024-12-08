@@ -129,7 +129,7 @@ const handleAuthenticate = async () => {
 
         // Make an API call to the backend
         //const response = await fetch('https://sihseam2024mainbackend.azurewebsites.net/api/user/authenticate', {
-        const response = await fetch('http://localhost:3000/api/user/authenticate', {
+        const response = await fetch('https://sihseam2024mainbackend.azurewebsites.net/api/user/authenticate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
