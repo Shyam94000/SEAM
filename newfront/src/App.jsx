@@ -1,14 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
-import * as faceapi from "face-api.js";
-import {
-  Container,
-  Box,
-  CircularProgress,
-  Typography,
-  Alert,
-} from "@mui/material";
+import { Container, Box, CircularProgress, Typography, Alert } from "@mui/material";
 import { BrowserRouter as Router, Route, Routes, useNavigate } from "react-router-dom";
-import { verifyModelHashes } from "./components/modelHashUtils.js";
+import { loadModels } from "./components/loadModels"; // Correct relative import path
 
 // Lazy load components
 const FaceAuthentication = lazy(() => import("./components/FaceAuthentication"));
@@ -22,24 +15,9 @@ function App() {
   const [authenticationResult, setAuthenticationResult] = useState(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [hashVerificationError, setHashVerificationError] = useState(null);
+  const [loadingError, setLoadingError] = useState(null);
   const navigate = useNavigate();
 
-  // Function to load models from the server
-  const loadModels = async () => {
-    try {
-      const MODEL_URL = "https://sihseam2024mainbackend.azurewebsites.net/models";
-      await Promise.all([
-        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-      ]);
- 
-      setModelsLoaded(true);
-      
-    } catch (error) {
-      console.error("Error loading models:", error);
-    }
-  };
   const handleAuthenticated = (user, result) => {
     if (user) {
       setAuthenticatedUser(user);
@@ -49,22 +27,9 @@ function App() {
   };
 
   useEffect(() => {
-    loadModels();
+    loadModels(setModelsLoaded, setLoadingError, setHashVerificationError);  // Using the new function
 
-    const hashVerificationInterval = setInterval(async () => {
-      console.log("Verifying model hashes...");
-      const modelHashesVerified = await verifyModelHashes(faceapi, setHashVerificationError);
-
-      if (!modelHashesVerified) {
-        console.warn("Model hash verification failed. Reloading models...");
-        await loadModels();
-      } else {
-        console.log("Model hashes verified successfully!");
-      }
-    }, 10000);
-
-    return () => clearInterval(hashVerificationInterval);
-  }, []); // Run only on mount
+  }, []); // Empty dependency array ensures the models load once on mount
 
   // Show loading screen until models are loaded
   if (!modelsLoaded) {
@@ -79,9 +44,9 @@ function App() {
             height: "100vh",
           }}
         >
-          {hashVerificationError ? (
+          {hashVerificationError || loadingError ? (
             <Alert severity="error" sx={{ mb: 2 }}>
-              {hashVerificationError}
+              {hashVerificationError || loadingError}
             </Alert>
           ) : (
             <>

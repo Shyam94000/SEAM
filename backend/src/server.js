@@ -78,7 +78,7 @@ class SecureModelServer {
     // Global rate limiting
     const globalRateLimiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 1000, // Limit each IP to 100 requests per windowMs
+      max: 10000, // Limit each IP to 100 requests per windowMs
       message: 'Too many requests, please try again later',
       standardHeaders: true,
       legacyHeaders: false,
@@ -88,7 +88,7 @@ class SecureModelServer {
     // Specific route rate limiters
     const modelRateLimiter = rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: 50, // More restrictive for model routes
+      max: 100000, // More restrictive for model routes
       message: 'Model request limit exceeded',
     });
     this.app.use('/models', modelRateLimiter);
@@ -218,10 +218,8 @@ class SecureModelServer {
         res.setHeader('Content-Type', modelName.endsWith('.json') ? 'application/json' : 'application/octet-stream');
         res.setHeader('Content-Disposition', `attachment; filename="${modelName}"`);
         
-        // Pipe file stream directly
         fileStream.pipe(res);
     
-        // Error handling for file stream
         fileStream.on('error', (streamError) => {
           this.logger.error('Model file stream error', { 
             modelName, 
