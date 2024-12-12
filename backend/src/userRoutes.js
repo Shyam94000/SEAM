@@ -5,13 +5,17 @@ const fs = require('fs').promises;
 const faceapi = require('face-api.js');
 const { createCanvas, loadImage } = require('canvas');
 const { body, validationResult } = require('express-validator');
-const UserRepository = require('./userRepository');
+const UserRepository = require('./userRepository'); // This imports the class
 
 class UserRoutes {
   constructor(logger) {
     this.router = express.Router();
     this.logger = logger;
     this.userRepo = new UserRepository(logger);
+
+    this.userRepo.createLogsTable().catch(err => {
+      this.logger.error('Failed to create logs table', { message: err.message });
+    });
 
     // Configure file upload
     this.upload = multer({
@@ -32,20 +36,6 @@ class UserRoutes {
   }
 
   initializeRoutes() {
-    // Middleware to initialize database and models
-    this.router.use(async (req, res, next) => {
-      try {
-        await this.userRepo.connect();
-        await this.userRepo.createUserTable();
-        await this.userRepo.loadModels();
-        next();
-      } catch (error) {
-        this.logger.error('Initialization error', { message: error.message });
-        res.status(500).json({ error: 'Initialization failed', details: error.message });
-      }
-    });
-
-    // Registration route
     this.router.post(
       '/register',
       this.upload.single('image'),
@@ -109,7 +99,6 @@ class UserRoutes {
       }
     );
 
-    // Authentication route
     this.router.post(
       '/authenticate',
       [
@@ -119,42 +108,229 @@ class UserRoutes {
       async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-          return res.status(400).json({ errors: errors.array() });
+          return res.status(400).json({ 
+            authenticated: false,
+            errors: errors.array(),
+            message: 'Validation failed'
+          });
         }
 
         try {
-          const { aadharNumber, descriptor } = req.body;
+          const { aadharNumber, descriptor, image } = req.body;
 
-          // Retrieve stored face descriptor and user data
+          // Retrieve stored user data
           const user = await this.userRepo.getUserDetails(aadharNumber);
-
           if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            return res.status(404).json({
+              authenticated: false,
+              error: 'User not found',
+              message: 'No user exists with this Aadhar number',
+              aadharNumber: aadharNumber
+            });
           }
 
-          const descriptor1Str = user.FaceDescriptor; // Assuming it's stored as a string
-          const descriptor1Dict = JSON.parse(descriptor1Str); // Parse the JSON string into an object
-          const descriptor1Array = Object.values(descriptor1Dict);
+          // Validate descriptor
+          if (!descriptor || !Array.isArray(descriptor) || descriptor.length === 0) {
+            return res.status(400).json({
+              authenticated: false,
+              error: 'Invalid face descriptor',
+              message: 'Face descriptor is required and must be a non-empty array'
+            });
+          }
+          // Parse stored face descriptor
+          let storedDescriptorArray;
+          try {
+            const storedDescriptor = JSON.parse(user.FaceDescriptor);
+            storedDescriptorArray = Array.isArray(storedDescriptor) 
+              ? storedDescriptor 
+              : Object.values(storedDescriptor);
+          } catch (parseError) {
+            this.logger.error('Error parsing stored face descriptor', { 
+              message: parseError.message,
+              storedDescriptor: user.FaceDescriptor 
+            });
+            return res.status(500).json({
+              authenticated: false,
+              error: 'Internal server error',
+              message: 'Error processing stored face data'
+            });
+          }
 
           // Compare face descriptors
-          const isMatch = await this.userRepo.compareDescriptors(descriptor1Array, descriptor);
+          const isMatch = await this.userRepo.compareDescriptors(
+            storedDescriptorArray, 
+            descriptor
+          );
 
+          // Prepare detailed authentication attempt log
+          const logData = {
+            name: user.Name,
+            aadharNumber: user.AadharNumber,
+            image: image || 'No image provided',
+            description: isMatch 
+              ? 'Successful Face Authentication' 
+              : 'Failed Face Authentication',
+            ipAddress: req.ip || 'Unknown'
+          };
+
+          // Log the authentication attempt
+          await this.userRepo.logAuthenticationAttempt(logData);
+
+          // Prepare response based on authentication result
           if (isMatch) {
             res.json({
               authenticated: true,
               name: user.Name,
               aadharNumber: user.AadharNumber,
-              image: user.Image, // Base64 encoded image
+              image: user.Image || null,
+              message: 'Authentication successful',
+              details: {
+                faceMatchConfidence: 'High',
+                timestamp: new Date().toISOString()
+              }
             });
           } else {
             res.status(401).json({
               authenticated: false,
-              message: 'Authentication failed',
+              name: user.Name,
+              aadharNumber: user.AadharNumber,
+              message: 'Authentication failed - Face does not match',
+              details: {
+                reason: 'Face descriptor mismatch',
+                timestamp: new Date().toISOString()
+              }
             });
           }
         } catch (error) {
-          this.logger.error('Authentication error', { message: error.message });
-          res.status(500).json({ error: 'Authentication failed', details: error.message });
+          // Comprehensive error logging
+          this.logger.error('Authentication process error', { 
+            message: error.message,
+            stack: error.stack,
+            aadharNumber: req.body.aadharNumber
+          });
+
+          res.status(500).json({
+            authenticated: false,
+            error: 'Authentication process failed',
+            message: 'An unexpected error occurred during authentication',
+            details: error.message
+          });
+        }
+      }
+    );
+
+    this.router.get('/user-logs/:aadharNumber', async (req, res) => {
+      try {
+        const aadharNumber = req.params.aadharNumber;
+    
+        // Validate Aadhar number
+        if (!/^\d{12}$/.test(aadharNumber)) {
+          return res.status(400).json({ 
+            error: 'Invalid Aadhar number format' 
+          });
+        }
+    
+        // Retrieve logs
+        const logs = await this.userRepo.getUserLogs(aadharNumber);
+    
+        res.json({ 
+          logs: logs,
+          totalLogs: logs.length
+        });
+      } catch (error) {
+        this.logger.error('User logs retrieval error', { 
+          message: error.message,
+          aadharNumber: req.params.aadharNumber
+        });
+    
+        res.status(500).json({ 
+          error: 'Failed to retrieve logs',
+          message: error.message 
+        });
+      }
+    });
+    
+
+    // Update profile route
+    this.router.put(
+      '/update-profile', 
+      this.upload.single('document'), 
+      [
+        body('name').trim().notEmpty().withMessage('Name is required'),
+        body('aadharNumber').isLength({ min: 12, max: 12 }).withMessage('Invalid Aadhaar Number'),
+        body('currentAadharNumber').isLength({ min: 12, max: 12 }).withMessage('Invalid Current Aadhaar Number')
+      ],
+      async (req, res) => {
+        // Validate input
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          return res.status(400).json({ 
+            success: false, 
+            errors: errors.array() 
+          });
+        }
+
+        try {
+          const { name, aadharNumber, currentAadharNumber } = req.body;
+          
+          // Validate name length
+          if (name.trim().length < 2) {
+            return res.status(400).json({ 
+              success: false, 
+              error: 'Name must be at least 2 characters long' 
+            });
+          }
+
+          // Verify current user exists
+          const currentUser = await this.userRepo.getUserDetails(currentAadharNumber);
+          if (!currentUser) {
+            return res.status(404).json({ 
+              success: false, 
+              error: 'Current user not found' 
+            });
+          }
+
+          // Prepare user data for update
+          const userData = {
+            name: name.trim(),
+            aadharNumber,
+            image: req.file 
+              ? req.file.buffer.toString('base64') 
+              : currentUser.Image // Use existing image if no new image provided
+          };
+
+          // Update user details
+          const result = await this.userRepo.updateUserDetails(userData);
+
+          // Log the update event
+          await this.userRepo.logProfileUpdateAttempt({
+            name: userData.name,
+            aadharNumber: userData.aadharNumber,
+            oldName: currentUser.Name,
+            imageChanged: !!req.file,
+            timestamp: new Date()
+          });
+
+          res.status(200).json({
+            success: true,
+            message: 'Profile updated successfully',
+            data: {
+              name: userData.name,
+              aadharNumber: userData.aadharNumber,
+              imageUpdated: !!req.file
+            }
+          });
+        } catch (error) {
+          this.logger.error('Profile update error', { 
+            message: error.message, 
+            stack: error.stack 
+          });
+
+          res.status(500).json({ 
+            success: false,
+            error: 'Profile update failed',
+            details: error.message 
+          });
         }
       }
     );

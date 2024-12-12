@@ -1,5 +1,9 @@
 {
   "projects": {
-    "default": "seamv1"
-  }
+    "default": "seamv2",
+    "seamv2": "seamv2",
+    "seamv1": "seamv1"
+  },
+  "targets": {},
+  "etags": {}
 }

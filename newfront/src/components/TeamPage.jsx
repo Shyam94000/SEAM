@@ -8,7 +8,7 @@ const teamMembers = [
     role: "Team Lead",
     description:
       "Computer Science and Buisness Systems | PSG Institute of Technology and Applied Research",
-    image: "assets/images/d.jpg",
+    image: "/images/d.jpg",
     accent: "purple-50",
   },
   {
@@ -17,7 +17,7 @@ const teamMembers = [
     role: "Team Member",
     description:
       "Mechanical Engineering | PSG Institute of Technology and Applied Research",
-    image: "assets/images/k.jpg",
+    image: "/images/k.jpg",
     accent: "bg-green-50",
   },
   {
@@ -26,7 +26,8 @@ const teamMembers = [
     role: "",
     description:
       "Computer Science and Buisness Systems | PSG Institute of Technology and Applied Research",
-    image: "assets/images/m.jpg",
+    image: "/images/m.jpg",
+
     accent: "bg-blue-50",
   },
   {
@@ -35,7 +36,7 @@ const teamMembers = [
     role: "Team Member",
     description:
       "Computer Science and Buisness Systems | PSG Institute of Technology and Applied Research",
-    image: "assets/images/ab.jpg",
+    image: "/images/ab.jpg",
     accent: "bg-red-50",
   },
   {
@@ -44,7 +45,7 @@ const teamMembers = [
     role: "Team Member",
     description:
       "Computer Science Engineering | PSG Institute of Technology and Applied Research",
-    image: "assets/images/a.jpg",
+    image: "/images/a.jpg",
     accent: "bg-yellow-50",
   },
   {
@@ -53,7 +54,7 @@ const teamMembers = [
     role: "Team Member ",
     description:
       "Computer Science Engineering | PSG Institute of Technology and Applied Research",
-    image: "assets/images/s.jpg",
+    image: "/images/ab.jpg",
     accent: "bg-pink-50",
   },
 ];
@@ -97,13 +98,13 @@ const TeamMemberSection = ({ member, index }) => {
           transition={{ duration: 1 }}
           className="order-1 md:order-2"
         >
-          <h2 className="text-5xl font-bold mb-4 text-black !important">
+          <h2 className="text-5xl font-bold mb-4 text-gray-900">
             {member.name}
           </h2>
-          <h3 className="text-3xl mb-6 text-black font-semibold !important">
+          <h3 className="text-3xl mb-6 text-gray-600 font-semibold">
             {member.role}
           </h3>
-          <p className="text-xl text-black leading-relaxed !important">
+          <p className="text-xl text-gray-800 leading-relaxed">
             {member.description}
           </p>
         </motion.div>

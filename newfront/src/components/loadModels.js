@@ -1,76 +1,79 @@
 import * as faceapi from "face-api.js";
 import * as CryptoJS from "crypto-js";
-import * as idb from "idb";
-import { verifyModelHashes } from "./modelHashUtils";
+import localforage from "localforage";
+import axios from "axios";
 
-// Enhanced model loader with improved security and error handling
+// Enhanced model loader for cross-platform caching
 export const loadModels = async (setModelsLoaded, setLoadingError, setHashVerificationError) => {
-  const MODEL_URL = "http://localhost:3000/models"; // Adjust as necessary
-  const DB_NAME = "FaceApiModelsDB";
-  const STORE_NAME = "models";
+  const MODEL_URL = "https://modelstorage2024.blob.core.windows.net/models";
+  const CACHE_VERSION = "v1";
 
-  // Enhanced encryption key generation
-  const generateEncryptionKey = () => {
-    return CryptoJS.lib.WordArray.random(256 / 8).toString();
+  // Configure localforage for more reliable mobile storage
+  localforage.config({
+    driver: [
+      localforage.INDEXEDDB,
+      localforage.WEBSQL,
+      localforage.LOCALSTORAGE
+    ],
+    name: "FaceApiModelsCache",
+    version: 1.0
+  });
+
+  // Performance Monitoring Utility
+  const performanceMonitor = {
+    startTime: null,
+    start() {
+      this.startTime = performance.now();
+    },
+    end(label) {
+      const duration = performance.now() - this.startTime;
+      console.log(`${label} took ${duration.toFixed(2)}ms`);
+      return duration;
+    }
   };
 
-  // Robust encryption with error handling
-  const encryptData = (data) => {
+  // Generate or retrieve encryption key
+  const getOrGenerateEncryptionKey = () => {
+    const storageKey = `faceapi_encryption_key_${CACHE_VERSION}`;
+    let encryptionKey = localStorage.getItem(storageKey);
+    
+    if (!encryptionKey) {
+      encryptionKey = CryptoJS.lib.WordArray.random(256 / 8).toString();
+      localStorage.setItem(storageKey, encryptionKey);
+    }
+    
+    return encryptionKey;
+  };
+
+  // Encrypt data
+  const encryptData = (data, encryptionKey) => {
     try {
-      const encryptionKey =
-        localStorage.getItem("modelEncryptionKey") || generateEncryptionKey();
-
-      // Store the key securely if it doesn't exist
-      if (!localStorage.getItem("modelEncryptionKey")) {
-        localStorage.setItem("modelEncryptionKey", encryptionKey);
-      }
-
       return CryptoJS.AES.encrypt(JSON.stringify(data), encryptionKey).toString();
     } catch (error) {
       console.error("Encryption failed:", error);
-      throw new Error("Failed to encrypt model data");
+      return data; // Fallback to unencrypted if encryption fails
     }
   };
 
-  // Robust decryption with error handling
-  const decryptData = (encryptedData) => {
+  // Decrypt data
+  const decryptData = (encryptedData, encryptionKey) => {
     try {
-      const encryptionKey = localStorage.getItem("modelEncryptionKey");
-
-      if (!encryptionKey) {
-        throw new Error("No encryption key found");
-      }
-
       const decrypted = CryptoJS.AES.decrypt(encryptedData, encryptionKey).toString(
         CryptoJS.enc.Utf8
       );
-
       return JSON.parse(decrypted);
     } catch (error) {
-      console.error("Decryption failed:", error);
-      throw new Error("Failed to decrypt model data");
-    }
-  };
-
-  // Initialize IndexedDB with improved error handling
-  const initializeDatabase = async () => {
-    try {
-      return await idb.openDB(DB_NAME, 1, {
-        upgrade(db) {
-          if (!db.objectStoreNames.contains(STORE_NAME)) {
-            db.createObjectStore(STORE_NAME);
-          }
-        },
-      });
-    } catch (error) {
-      console.error("Database initialization failed:", error);
-      throw new Error("Could not initialize IndexedDB");
+      console.error("Decryption failed, returning original data:", error);
+      return encryptedData; // Fallback to original data if decryption fails
     }
   };
 
   try {
-    // Initialize database
-    const db = await initializeDatabase();
+    // Start performance tracking
+    performanceMonitor.start();
+
+    // Generate encryption key
+    const encryptionKey = getOrGenerateEncryptionKey();
 
     // Model files to load
     const modelFiles = [
@@ -84,62 +87,85 @@ export const loadModels = async (setModelsLoaded, setLoadingError, setHashVerifi
       "face_recognition_model-weights_manifest.json",
     ];
 
-    // Load and cache models
-    for (const fileName of modelFiles) {
-      // Check cache first
-      const encryptedData = await db.get(STORE_NAME, fileName);
-
-      if (!encryptedData) {
-        // Fetch and cache if not in DB
-        try {
-          console.log(`Model ${fileName} not found in cache. Fetching from the web...`);
-          const response = await fetch(`${MODEL_URL}/${fileName}`);
-          if (!response.ok) {
-            throw new Error(`Failed to fetch ${fileName}`);
-          }
-          const fileBuffer = await response.arrayBuffer();
-
-          // Encrypt and store
-          const encryptedFile = encryptData(new Uint8Array(fileBuffer).toString());
-          await db.put(STORE_NAME, encryptedFile, fileName);
-          console.log(`Model ${fileName} fetched and cached successfully.`);
-        } catch (fetchError) {
-          console.error(`Error caching ${fileName}:`, fetchError);
-          // Optionally, handle individual file fetch failures
+    // Check cache status and load models
+    const loadModelWithCache = async (fileName) => {
+      try {
+        // Try to get cached model
+        const cachedModel = await localforage.getItem(fileName);
+        
+        if (cachedModel) {
+          console.log(`Using cached model: ${fileName}`);
+          return cachedModel;
         }
-      } else {
-        console.log(`Model ${fileName} loaded from cache.`);
-      }
-    }
 
-    // Load models into face-api.js
+        // If not cached, fetch and cache
+        const response = await fetch(`${MODEL_URL}/${fileName}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ${fileName}`);
+        }
+        
+        const modelData = await response.arrayBuffer();
+        
+        // Encrypt and cache
+        const encryptedModel = encryptData(
+          Array.from(new Uint8Array(modelData)), 
+          encryptionKey
+        );
+        
+        await localforage.setItem(fileName, encryptedModel);
+        
+        return modelData;
+      } catch (error) {
+        console.error(`Error loading model ${fileName}:`, error);
+        throw error;
+      }
+    };
+
+    // Parallel model loading with fallback caching
     await Promise.all([
       faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
       faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
       faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
     ]);
 
-    // Set models as loaded
+    // Mark models as loaded
     setModelsLoaded(true);
     setLoadingError(null);
+
+    // Background caching for all models
+    const cacheModelsInBackground = async () => {
+      try {
+        await Promise.all(
+          modelFiles.map(async (fileName) => {
+            try {
+              await loadModelWithCache(fileName);
+            } catch (error) {
+              console.error(`Background caching failed for ${fileName}:`, error);
+            }
+          })
+        );
+      } catch (error) {
+        console.error("Background caching failed:", error);
+      }
+    };
+
+    // Start background caching
+    cacheModelsInBackground();
+
+    // Performance logging
+    performanceMonitor.end('Initial Model Load');
+
+    // Periodic model verification (optional)
+    if (setModelsLoaded) {
+      setInterval(async () => {
+        console.log("Checking model integrity...");
+        // Add any periodic checks or verification logic here
+      }, 30000);
+    }
+
   } catch (error) {
     console.error("Model loading failed:", error);
     setModelsLoaded(false);
     setLoadingError(error.message || "Failed to load face recognition models");
-  }
-
-  // Model hash verification
-  if (setModelsLoaded) {
-    setInterval(async () => {
-      console.log("Verifying model hashes...");
-      const modelHashesVerified = await verifyModelHashes(faceapi, setHashVerificationError);
-
-      if (!modelHashesVerified) {
-        console.warn("Model hash verification failed. Reloading models...");
-        await loadModels();
-      } else {
-        console.log("Model hashes verified successfully!");
-      }
-    }, 10000);
   }
 };

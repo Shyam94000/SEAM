@@ -1,7 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
 import { Container, Box, CircularProgress, Typography, Alert } from "@mui/material";
 import { BrowserRouter as Router, Route, Routes, useNavigate } from "react-router-dom";
-import { loadModels } from "./components/loadModels"; // Correct relative import path
+import { loadModels } from "./components/loadModels";
 
 // Lazy load components
 const FaceAuthentication = lazy(() => import("./components/FaceAuthentication"));
@@ -27,39 +27,8 @@ function App() {
   };
 
   useEffect(() => {
-    loadModels(setModelsLoaded, setLoadingError, setHashVerificationError);  // Using the new function
-
-  }, []); // Empty dependency array ensures the models load once on mount
-
-  // Show loading screen until models are loaded
-  if (!modelsLoaded) {
-    return (
-      <Container maxWidth="lg">
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100vh",
-          }}
-        >
-          {hashVerificationError || loadingError ? (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {hashVerificationError || loadingError}
-            </Alert>
-          ) : (
-            <>
-              <CircularProgress size={60} />
-              <Typography variant="h5" sx={{ mt: 3, color: "#000000" }}>
-                Loading face recognition models...
-              </Typography>
-            </>
-          )}
-        </Box>
-      </Container>
-    );
-  }
+    loadModels(setModelsLoaded, setLoadingError, setHashVerificationError);
+  }, []);
 
   return (
     <Container maxWidth="lg">
@@ -73,6 +42,9 @@ function App() {
               element={
                 <FaceAuthentication
                   onAuthenticated={handleAuthenticated}
+                  modelsLoaded={modelsLoaded}
+                  loadingError={loadingError}
+                  hashVerificationError={hashVerificationError}
                 />
               }
             />

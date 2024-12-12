@@ -18,6 +18,7 @@ const os = require('os');
 // Import custom modules
 const UserRoutes = require('./userRoutes');
 const ModelHandler = require('./modelHandler');
+const AuthStatsRoute = require('./authStatsRoute');
 
 // Load environment variables
 dotenv.config();
@@ -96,7 +97,7 @@ class SecureModelServer {
     // Enable CORS
     this.app.use(cors({
       origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : true,
-      methods: ['GET', 'POST', 'OPTIONS'],
+      methods: ['GET', 'POST', 'PUT', 'DELETE'],
       allowedHeaders: ['Content-Type', 'Authorization'],
       credentials: true
     }));
@@ -192,7 +193,8 @@ class SecureModelServer {
 
     const userRoutes = new UserRoutes(this.logger);
     this.app.use('/api/user', userRoutes.getRouter()); 
-    
+    const authStatsRoute = new AuthStatsRoute(this.logger);
+    this.app.use('/api', authStatsRoute.initializeRoutes());
 
     // Serve registration HTML
     this.app.get('/register', (req, res) => {
