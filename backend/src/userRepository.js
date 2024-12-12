@@ -4,6 +4,8 @@ const path = require('path');
 const { Canvas, Image } = require('canvas');
 const fs = require('fs').promises;
 const performance = require('perf_hooks').performance;
+const EnhancedConnectionManager = require('./enchancedConnectionManager');
+
 
 const config = {
   user: process.env.DB_USER || 'shock94000',
@@ -21,23 +23,20 @@ const config = {
 class UserRepository {
   constructor(logger) {
     this.logger = logger;
-    this.pool = null;
+    this.connectionManager = new EnhancedConnectionManager(config, logger);
     this.modelsLoaded = false;
   }
 
   // Create and connect using a connection pool
   async connect() {
     try {
-      if (!this.pool) {
-        this.pool = await sql.connect(config);
-        this.pool.on('error', err => {
-          this.logger.error('Database connection error', { message: err.message });
-        });
-      }
-      this.logger.info('Successfully connected to Azure SQL Database');
-      return this.pool;
+      const pool = await this.connectionManager.connect();
+      return pool;
     } catch (err) {
-      this.logger.error('Database connection error', { message: err.message, stack: err.stack });
+      this.logger.error('Database connection error', { 
+        message: err.message, 
+        stack: err.stack 
+      });
       throw new Error(`Database connection failed: ${err.message}`);
     }
   }
@@ -279,6 +278,17 @@ class UserRepository {
     } catch (err) {
       this.logger.error('Error comparing face descriptors', { message: err.message });
       throw err;
+    }
+  }
+  async closeConnection() {
+    try {
+      await this.connectionManager.closePool();
+      this.logger.info('Database connection pool closed successfully');
+    } catch (err) {
+      this.logger.error('Error closing connection pool', { 
+        message: err.message, 
+        stack: err.stack 
+      });
     }
   }
   async initializeDatabase() {
